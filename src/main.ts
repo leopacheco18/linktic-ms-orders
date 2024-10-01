@@ -9,14 +9,14 @@ async function bootstrap() {
 
   // Habilitar validación global
   app.useGlobalPipes(new ValidationPipe());
-
+  app.enableCors();
   // Configurar Swagger
   const config = new DocumentBuilder()
     .setTitle('API de Productos')
     .setDescription('Documentación de la API para gestionar productos')
     .setVersion('1.0')
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 

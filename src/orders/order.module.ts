@@ -6,9 +6,13 @@ import { OrderController } from './order.controller';
 import { OrderEntity } from './entities/order.entity';
 import { OrderProductsEntity } from './entities/order-products.entity';
 import { UserEntity } from 'src/users/entities/user.entity';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OrderEntity, OrderProductsEntity, UserEntity])],
+  imports: [
+    TypeOrmModule.forFeature([OrderEntity, OrderProductsEntity, UserEntity]),
+    HttpModule,
+  ],
   controllers: [OrderController],
   providers: [OrderService],
 })

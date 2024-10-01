@@ -1,17 +1,26 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+  Headers,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderEntity } from './entities/order.entity';
 import { ApiTags, ApiResponse, ApiOperation, ApiBody } from '@nestjs/swagger';
 
-@ApiTags('order')  // Agrupación en Swagger
+@ApiTags('order') // Agrupación en Swagger
 @Controller('order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new order' })  // Descripción de la operación
+  @ApiOperation({ summary: 'Create a new order' }) // Descripción de la operación
   @ApiResponse({
     status: 201,
     description: 'The order has been successfully created.',
@@ -28,7 +37,10 @@ export class OrderController {
         - \`quantity\`: The quantity of this product (number).`,
     type: CreateOrderDto,
   })
-  @ApiResponse({ status: 400, description: 'Bad Request. Ensure the input data is valid.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request. Ensure the input data is valid.',
+  })
   @ApiResponse({ status: 422, description: 'Validation error.' })
   @ApiResponse({
     status: 201,
@@ -42,12 +54,16 @@ export class OrderController {
         - \`quantity\`: The quantity of this product (number).
       **Returns**: The created order object.`,
   })
-  create(@Body() createOrderDto: CreateOrderDto): Promise<OrderEntity> {
-    return this.orderService.create(createOrderDto);
+  create(
+    @Body() createOrderDto: CreateOrderDto,
+    @Headers('authorization') authHeader: string,
+  ): Promise<OrderEntity> {
+    const token = authHeader.split(' ')[1]; // Eliminar el prefijo "Bearer"
+    return this.orderService.create(createOrderDto, token);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Retrieve all order' })  // Descripción de la operación
+  @ApiOperation({ summary: 'Retrieve all order' }) // Descripción de la operación
   @ApiResponse({
     status: 200,
     description: 'List of all order.',
@@ -57,8 +73,20 @@ export class OrderController {
     return this.orderService.findAll();
   }
 
+  @Get('/byUser')
+  @ApiOperation({ summary: 'Retrieve all order by user id' }) // Descripción de la operación
+  @ApiResponse({
+    status: 200,
+    description: 'List of all order by user id.',
+    type: [OrderEntity],
+  })
+  filter(@Headers('authorization') authHeader: string): Promise<OrderEntity[]> {
+    const token = authHeader.split(' ')[1];
+    return this.orderService.filter(token);
+  }
+
   @Get(':id')
-  @ApiOperation({ summary: 'Retrieve an order by ID' })  // Descripción de la operación
+  @ApiOperation({ summary: 'Retrieve an order by ID' }) // Descripción de la operación
   @ApiResponse({
     status: 200,
     description: 'The found order.',
@@ -70,7 +98,7 @@ export class OrderController {
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Update an existing order' })  // Descripción de la operación
+  @ApiOperation({ summary: 'Update an existing order' }) // Descripción de la operación
   @ApiResponse({
     status: 200,
     description: 'The updated order.',
@@ -93,12 +121,15 @@ export class OrderController {
         - \`quantity\`: The quantity of this product (number).
       **Returns**: The updated order object.`,
   })
-  update(@Param('id') id: number, @Body() updateOrderDto: UpdateOrderDto): Promise<OrderEntity> {
+  update(
+    @Param('id') id: number,
+    @Body() updateOrderDto: UpdateOrderDto,
+  ): Promise<OrderEntity> {
     return this.orderService.update(id, updateOrderDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete an order by ID' })  // Descripción de la operación
+  @ApiOperation({ summary: 'Delete an order by ID' }) // Descripción de la operación
   @ApiResponse({
     status: 204,
     description: 'The order has been successfully deleted.',

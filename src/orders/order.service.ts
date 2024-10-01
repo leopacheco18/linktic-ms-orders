@@ -6,29 +6,52 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderEntity } from './entities/order.entity';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { OrderProductsEntity } from './entities/order-products.entity';
-
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepository: Repository<OrderEntity>,
 
-
     @InjectRepository(OrderProductsEntity)
     private readonly orderProductsRepository: Repository<OrderProductsEntity>,
 
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+
+    private httpService: HttpService,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<OrderEntity> {
+  async create(
+    createOrderDto: CreateOrderDto,
+    token: string,
+  ): Promise<OrderEntity> {
     // Busca al usuario que es el comprador
-    const buyer = await this.userRepository.findOne({ where: { userId: createOrderDto.buyerId } });
+    const url = 'http://localhost:3005/users/validate-token';
+    const headers = {
+      accept: '*/*',
+      Authorization: 'Bearer ' + token,
+    };
+    let data = { user_id: 1 };
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(url, {}, { headers }),
+      );
+      data = response.data;
+    } catch (error) {
+      throw new Error(`Error validating token: ${error.message}`);
+    }
+
+    console.log(data)
+
+    const buyer = await this.userRepository.findOne({
+      where: { userId: data.user_id },
+    });
 
     if (!buyer) {
       throw new Error('Buyer not found'); // Maneja errores en caso de no encontrar el comprador
     }
-
 
     // Crea la orden y asigna manualmente las relaciones
     const order = this.orderRepository.create({
@@ -38,12 +61,16 @@ export class OrderService {
     });
 
     const order_res = await this.orderRepository.save(order);
-    for (const op of createOrderDto.orderProducts){
+    for (const op of createOrderDto.orderProducts) {
+      const product = this.httpService.get(
+        `http://localhost:3003/products/${op.productId}`,
+      );
+      const { data } = await firstValueFrom(product);
       const opRepo = this.orderProductsRepository.create({
         order: order,
-        product: {product_id: op.productId},
-        quantity: op.quantity
-      })
+        product: data,
+        quantity: op.quantity,
+      });
 
       await this.orderProductsRepository.save(opRepo);
     }
@@ -53,14 +80,16 @@ export class OrderService {
 
   // Obtener todas las órdenes
   async findAll(): Promise<OrderEntity[]> {
-    return this.orderRepository.find({ relations: ['orderProducts', 'buyer'] });
+    return this.orderRepository.find({
+      relations: ['orderProducts', 'buyer', 'orderProducts.product'],
+    });
   }
 
   // Obtener una orden por ID
   async findOne(id: number): Promise<OrderEntity> {
     const order = await this.orderRepository.findOne({
       where: { orderId: id },
-      relations: ['orderProducts','orderProducts.product', 'buyer'],
+      relations: ['orderProducts', 'orderProducts.product', 'buyer'],
     });
     if (!order) {
       throw new NotFoundException(`Order with ID ${id} not found`);
@@ -69,7 +98,10 @@ export class OrderService {
   }
 
   // Editar una orden existente
-  async update(id: number, updateOrderDto: UpdateOrderDto): Promise<OrderEntity> {
+  async update(
+    id: number,
+    updateOrderDto: UpdateOrderDto,
+  ): Promise<OrderEntity> {
     const order = await this.findOne(id);
     const updatedOrder = this.orderRepository.merge(order, updateOrderDto);
     return this.orderRepository.save(updatedOrder);
@@ -84,9 +116,26 @@ export class OrderService {
   }
 
   // Filtrar órdenes por estado
-  async filter(status: boolean): Promise<OrderEntity[]> {
+  async filter(token: string): Promise<OrderEntity[]> {
+    const url = 'http://localhost:3005/users/validate-token';
+    const headers = {
+      accept: '*/*',
+      Authorization: 'Bearer ' + token,
+    };
+    let data = { user_id: 1 };
+    try {
+      const response = await lastValueFrom(
+        this.httpService.post(url, {}, { headers }),
+      );
+      data = response.data;
+    } catch (error) {
+      throw new Error(`Error validating token: ${error.message}`);
+    }
+
+    console.log(data)
+
     return this.orderRepository.find({
-      where: { status },
+      where: { buyer: { userId: data.user_id } },
       relations: ['orderProducts', 'buyer'],
     });
   }
