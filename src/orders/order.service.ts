@@ -28,7 +28,7 @@ export class OrderService {
     token: string,
   ): Promise<OrderEntity> {
     // Busca al usuario que es el comprador
-    const url = 'http://localhost:3005/users/validate-token';
+    const url = 'http://linktic-ms-auth:3005//users/validate-token';
     const headers = {
       accept: '*/*',
       Authorization: 'Bearer ' + token,
@@ -63,7 +63,7 @@ export class OrderService {
     const order_res = await this.orderRepository.save(order);
     for (const op of createOrderDto.orderProducts) {
       const product = this.httpService.get(
-        `http://localhost:3003/products/${op.productId}`,
+        `http://linktic-ms-products:3003/products/${op.productId}`,
       );
       const { data } = await firstValueFrom(product);
       const opRepo = this.orderProductsRepository.create({
@@ -117,7 +117,7 @@ export class OrderService {
 
   // Filtrar órdenes por estado
   async filter(token: string): Promise<OrderEntity[]> {
-    const url = 'http://localhost:3005/users/validate-token';
+    const url = 'http://linktic-ms-auth:3005/users/validate-token';
     const headers = {
       accept: '*/*',
       Authorization: 'Bearer ' + token,
